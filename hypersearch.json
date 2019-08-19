@@ -1,0 +1,47 @@
+{
+	"dataset_params": {
+		"data_dir": "/home/hazmat/Documents/mayonoise/data/",
+		"train_dir": "train/",
+		"test_dir": "test/",
+		"labels": {
+			"early": 0,
+			"late": 1
+		},
+		"crop": 32,
+		"scale": 10,
+		"stride": 16
+	},
+
+	"output_params": {
+		"results_dir": "/home/hazmat/Documents/mayonoise/hypersearch/results/"
+	},
+
+	"model_params": {
+		"kernel_size": [ 3 ],
+		"padding": [ 0 ],
+		"dilation": [ 1 ],
+		"stride": [ 1 ],
+		"layer_dims": [ [29, 20, 10, 7, 3] ],
+		"class_dim": [ 2 ],
+		"class_layers": [ 1 ],
+		"noise_std": [ 0.1 ]
+	},
+
+	"train_params": {
+		"lr": [ 0.01 ],
+		"batch_size": [ 99 ],
+		"epochs": [ 1 ],
+		"report": [ 5 ],
+		"crop": [ 81 ],
+		"clip": [ 1 ],
+		"decay": [ 0 ]
+	},
+
+	"loss_params": {
+		"lambdas": [ 1, 0.5, 0.25, 0.125, 0.0625 ]
+	},
+
+	"search_params": {
+		"trials": 1
+	}
+}
