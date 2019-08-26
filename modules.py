@@ -39,15 +39,16 @@ class SensoryModel(nn.Module):
         self.config = kwargs
         self.start_epoch = 0
         self.shape = None
+        self.noise_level = 0
 
         self.conv1 = nn.Conv2d(3, 8, kernel_size=3, padding=0, stride=1, dilation=1)
-        self.bn1 = nn.BatchNorm2d(8)
+        self.bn1 = nn.BatchNorm2d(8, affine=False)
         self.conv2 = nn.Conv2d(8, 16, kernel_size=5, padding=0, stride=2, dilation=1)
-        self.bn2 = nn.BatchNorm2d(16)
+        self.bn2 = nn.BatchNorm2d(16, affine=False)
         self.conv3 = nn.Conv2d(16, 32, kernel_size=5, padding=0, stride=2, dilation=1)
-        self.bn3 = nn.BatchNorm2d(32)
+        self.bn3 = nn.BatchNorm2d(32, affine=False)
         self.conv4 = nn.Conv2d(32, 32, kernel_size=5, padding=0, stride=2, dilation=1)
-        self.bn4 = nn.BatchNorm2d(32)
+        self.bn4 = nn.BatchNorm2d(32, affine=False)
 
         self.deconv4 = nn.ConvTranspose2d(32, 32, kernel_size=5, padding=0, stride=2, dilation=1)
         self.deconv3 = nn.ConvTranspose2d(32, 16, kernel_size=5, padding=0, stride=2, dilation=1)
@@ -55,13 +56,13 @@ class SensoryModel(nn.Module):
         self.deconv1 = nn.ConvTranspose2d(8, 3, kernel_size=3, padding=0, stride=1, dilation=1)
 
         self.fc1 = nn.Linear(512, 384)
-        self.bn5 = nn.BatchNorm1d(384)
+        self.bn5 = nn.BatchNorm1d(384, affine=False)
         self.fc2 = nn.Linear(384, 258)
-        self.bn6 = nn.BatchNorm1d(258)
+        self.bn6 = nn.BatchNorm1d(258, affine=False)
         self.fc3 = nn.Linear(258, 131)
-        self.bn7 = nn.BatchNorm1d(131)
+        self.bn7 = nn.BatchNorm1d(131, affine=False)
         self.fc4 = nn.Linear(131, 3)
-        self.bn8 = nn.BatchNorm1d(3)
+        self.bn8 = nn.BatchNorm1d(3, affine=False)
 
         self.defc4 = nn.Linear(3, 131)
         self.defc3 = nn.Linear(131, 258)
@@ -72,6 +73,8 @@ class SensoryModel(nn.Module):
         self.tanh = nn.Tanh()
 
     def conv_encode(self, x):
+        noise = (2*torch.rand_like(x)-1) * self.noise_level
+        x = x + noise
         y = self.prelu(self.bn1(self.conv1(x)))
         y = self.prelu(self.bn2(self.conv2(y)))
         y = self.prelu(self.bn3(self.conv3(y)))
@@ -88,9 +91,9 @@ class SensoryModel(nn.Module):
     def fc_encode(self, x):
         self.shape = x.shape
         y = x.flatten(1)
-        y = self.prelu(self.bn5(self.fc1(y)))
-        y = self.prelu(self.bn6(self.fc2(y)))
-        y = self.prelu(self.bn7(self.fc3(y)))
+        y = self.tanh(self.bn5(self.fc1(y)))
+        y = self.tanh(self.bn6(self.fc2(y)))
+        y = self.tanh(self.bn7(self.fc3(y)))
         y = self.tanh(self.bn8(self.fc4(y)))
         return y
 
@@ -106,6 +109,7 @@ class SensoryModel(nn.Module):
         return self.fc_encode(self.conv_encode(x))
 
     def decode(self, y):
+        # y = y + (2*torch.rand_like(y)-1)*self.noise_level
         return self.conv_decode(self.fc_decode(y))
 
     def forward(self, s):
@@ -121,40 +125,50 @@ class PerceptualModel(nn.Module):
 
         self.config = kwargs
         self.start_epoch = 0
+        self.noise_level = 0
 
         self.fc1 = nn.Linear(9, 18)
-        self.bn1 = nn.BatchNorm1d(18)
+        self.bn1 = nn.BatchNorm1d(18, affine=False)
         self.fc2 = nn.Linear(18, 36)
-        self.bn2 = nn.BatchNorm1d(36)
+        self.bn2 = nn.BatchNorm1d(36, affine=False)
         self.fc3 = nn.Linear(36, 72)
-        self.bn3 = nn.BatchNorm1d(72)
+        self.bn3 = nn.BatchNorm1d(72, affine=False)
         self.fc4 = nn.Linear(72, 9)
-        self.bn4 = nn.BatchNorm1d(9)
+        self.bn4 = nn.BatchNorm1d(9, affine=False)
 
         self.defc4 = nn.Linear(9, 72)
-        self.debn4 = nn.BatchNorm1d(72)
+        self.debn4 = nn.BatchNorm1d(72, affine=False)
         self.defc3 = nn.Linear(72, 36)
-        self.debn3 = nn.BatchNorm1d(36)
+        self.debn3 = nn.BatchNorm1d(36, affine=False)
         self.defc2 = nn.Linear(36, 18)
-        self.debn2 = nn.BatchNorm1d(18)
+        self.debn2 = nn.BatchNorm1d(18, affine=False)
         self.defc1 = nn.Linear(18, 3)
 
         self.prelu = nn.PReLU()
         self.tanh = nn.Tanh()
 
-    def forward(self, r_0, r_1, m_0):
+    def encode(self, r_0, r_1, m_0):
         # r_0 is previous state, r_1 is current state, m_0 is previous action
         p = torch.cat([r_0, r_1, m_0], 1)
+        noise = (2*torch.rand_like(p)-1) * self.noise_level
+        p = p + noise
         p = self.prelu(self.bn1(self.fc1(p)))
         p = self.prelu(self.bn2(self.fc2(p)))
         p = self.prelu(self.bn3(self.fc3(p)))
         p = self.tanh(self.bn4(self.fc4(p)))
+        return p
 
+    def decode(self, p):
+        # p = p + (2*torch.rand_like(p)-1) * self.noise_level
         _r_1 = self.prelu(self.debn4(self.defc4(p)))
         _r_1 = self.prelu(self.debn3(self.defc3(_r_1)))
         _r_1 = self.prelu(self.debn2(self.defc2(_r_1)))
         _r_1 = self.defc1(_r_1)
+        return _r_1
 
+    def forward(self, r_0, r_1, m_0):
+        p = self.encode(r_0, r_1, m_0)
+        _r_1 = self.decode(p)
         return p, _r_1
 
 
@@ -168,15 +182,19 @@ class ForwardKinematicsModel(nn.Module):
         self.start_epoch = 0
 
         self.fc1 = nn.Linear(9+3, 18)
+        self.bn1 = nn.BatchNorm1d(18, affine=False)
         self.fc2 = nn.Linear(18, 18)
+        self.bn2 = nn.BatchNorm1d(18, affine=False)
         self.fc3 = nn.Linear(18, 9)
-        self.nonlin = nn.PReLU()
+        self.bn3 = nn.BatchNorm1d(9, affine=False)
+        self.prelu = nn.PReLU()
+        self.tanh = nn.Tanh()
 
     def forward(self, p_0, m_0):
         x = torch.cat([p_0, m_0], 1)
-        _p_1 = self.nonlin(self.fc1(x))
-        _p_1 = self.nonlin(self.fc2(_p_1))
-        _p_1 = self.nonlin(self.fc3(_p_1))
+        _p_1 = self.prelu(self.bn1(self.fc1(x)))
+        _p_1 = self.prelu(self.bn2(self.fc2(_p_1)))
+        _p_1 = self.tanh(self.bn3(self.fc3(_p_1)))
         return _p_1
 
 
@@ -192,20 +210,29 @@ class InverseKinematicsModel(nn.Module):
         self.indices = ['i-1', 'i', 'i+1']
 
         self.fc1 = nn.Linear(9+9+1, 36)
+        self.fc_skip = nn.Linear(9+9+1, 3)
+        self.bn1 = nn.BatchNorm1d(36, affine=False)
         self.fc2 = nn.Linear(36, 30)
+        self.bn2 = nn.BatchNorm1d(30, affine=False)
         self.fc3 = nn.Linear(30, 20)
+        self.bn3 = nn.BatchNorm1d(20, affine=False)
         self.fc4 = nn.Linear(20, 10)
+        self.bn4 = nn.BatchNorm1d(10, affine=False)
         self.fc5 = nn.Linear(10, 3)
+        self.bn5 = nn.BatchNorm1d(3, affine=False)
+        self.fc6 = nn.Linear(3, 3)
 
-        self.nonlin = nn.PReLU()
+        self.prelu = nn.PReLU()
+        self.tanh = nn.Tanh()
 
     def forward(self, p_0, p_1, dt):
         x = torch.cat([p_0, p_1, dt], 1)
-        _m_0 = self.nonlin(self.fc1(x))
-        _m_0 = self.nonlin(self.fc2(_m_0))
-        _m_0 = self.nonlin(self.fc3(_m_0))
-        _m_0 = self.nonlin(self.fc4(_m_0))
-        _m_0 = self.nonlin(self.fc5(_m_0))
+        _m_0 = self.prelu(self.bn1(self.fc1(x)))
+        _m_0 = self.prelu(self.bn2(self.fc2(_m_0)))
+        _m_0 = self.prelu(self.bn3(self.fc3(_m_0)))
+        _m_0 = self.prelu(self.bn4(self.fc4(_m_0)))
+        _m_0 = self.tanh(self.bn5(self.fc5(_m_0) + self.fc_skip(x)))
+        _m_0 = self.fc6(_m_0)
         return _m_0
 
 
@@ -221,6 +248,10 @@ class Mind_of_KID(nn.Module):
         self.perceptual_model = PerceptualModel(**kwargs)
         self.forward_kinematics_model = ForwardKinematicsModel(**kwargs)
         self.inverse_kinematics_model = InverseKinematicsModel(**kwargs)
+
+    def set_noise_level(self, noise_level):
+        self.sensory_model.noise_level = noise_level
+        self.perceptual_model.noise_level = noise_level
 
     def index(self, var, i):
         return var + '_' + self.indices[i+1]
@@ -249,7 +280,7 @@ class Mind_of_KID(nn.Module):
         return mvars
 
     def postdict(self, i, **mvars):
-        dt = mvars[self.index('t', i+1)] - mvars[self.index('t', i)]
+        dt = mvars[self.index('dt', i+1)]
         p_0 = mvars[self.index('p', i)]
         p_1 = mvars[self.index('p', i+1)]
         _m_0 = self.inverse_kinematics_model.forward(p_0, p_1, dt)
@@ -300,6 +331,14 @@ class Mind_of_KID(nn.Module):
         return model
 
 
+# class KID_Mover(nn.Module):
+#     def __init__(self, **kwargs):
+#         super(KID_Mover, self).__init__()
+#
+#         self.config = kwargs
+#         self.start_epoch = 0
+#
+#
 
 
 class KID_Eye(nn.Module):

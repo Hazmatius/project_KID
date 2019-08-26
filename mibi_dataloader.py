@@ -78,12 +78,15 @@ class ImageLoader:
             # imgs[i, :, :, :] = img
             # cmds[i, :] = command
         indices = np.argsort(times)
+        data = [data[i] for i in indices]
 
-        for i in range(num_pngs):
-            index = indices[i]
-            imgs[index, :, :, :] = data[i][0]
-            cmds[index, :] = data[i][1]
-            tsps[index, :] = data[i][2]
+        for i in range(len(times)):
+            imgs[i, :, :, :] = data[i][0]
+            cmds[i, :] = data[i][1]
+            if i > 0:
+                tsps[i, :] = data[i][2] - data[i-1][2]
+            else:
+                tsps[i, :] = -1
 
         print('finished loading')
         gc.enable()
@@ -192,15 +195,15 @@ class KID_Data:
 
     def get_samples(self, sample_indices):
         samples = {
-            's_i-1': torch.zeros([len(sample_indices), self.num_channels, self.crop, self.crop], dtype=torch.float32),
-            's_i':   torch.zeros([len(sample_indices), self.num_channels, self.crop, self.crop], dtype=torch.float32),
-            's_i+1': torch.zeros([len(sample_indices), self.num_channels, self.crop, self.crop], dtype=torch.float32),
-            'm_i-1': torch.zeros([len(sample_indices), 3], dtype=torch.float32),
-            'm_i':   torch.zeros([len(sample_indices), 3], dtype=torch.float32),
-            'm_i+1': torch.zeros([len(sample_indices), 3], dtype=torch.float32),
-            't_i-1':  torch.zeros([len(sample_indices), 1], dtype=torch.float32),
-            't_i':   torch.zeros([len(sample_indices), 1], dtype=torch.float32),
-            't_i+1':   torch.zeros([len(sample_indices), 1], dtype=torch.float32)
+            's_i-1': torch.zeros([len(sample_indices), self.num_channels, self.crop, self.crop], dtype=torch.float32).cuda(),
+            's_i':   torch.zeros([len(sample_indices), self.num_channels, self.crop, self.crop], dtype=torch.float32).cuda(),
+            's_i+1': torch.zeros([len(sample_indices), self.num_channels, self.crop, self.crop], dtype=torch.float32).cuda(),
+            'm_i-1': torch.zeros([len(sample_indices), 3], dtype=torch.float32).cuda(),
+            'm_i':   torch.zeros([len(sample_indices), 3], dtype=torch.float32).cuda(),
+            'm_i+1': torch.zeros([len(sample_indices), 3], dtype=torch.float32).cuda(),
+            'dt_i-1':  torch.zeros([len(sample_indices), 1], dtype=torch.float32).cuda(),
+            'dt_i':   torch.zeros([len(sample_indices), 1], dtype=torch.float32).cuda(),
+            'dt_i+1':   torch.zeros([len(sample_indices), 1], dtype=torch.float32).cuda()
         }
 
         for i in np.arange(len(sample_indices)):
@@ -213,9 +216,9 @@ class KID_Data:
             samples['m_i'][i, :] = self.get_cmd(j)
             samples['m_i+1'][i, :] = self.get_cmd(j+1)
 
-            samples['t_i-1'][i, :] = self.get_tsp(j-1)
-            samples['t_i'][i, :] = self.get_tsp(j)
-            samples['t_i+1'][i, :] = self.get_tsp(j+1)
+            samples['dt_i-1'][i, :] = self.get_tsp(j-1)
+            samples['dt_i'][i, :] = self.get_tsp(j)
+            samples['dt_i+1'][i, :] = self.get_tsp(j+1)
 
         return samples
 
