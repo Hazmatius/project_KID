@@ -325,7 +325,10 @@ class Mind_of_KID(nn.Module):
 
     @staticmethod
     def load_model(path, filename):
-        checkpoint = torch.load(path + filename)
+        if torch.cuda.is_available():
+            checkpoint = torch.load(path + filename, map_location='cuda')
+        else:
+            checkpoint = torch.load(path + filename, map_location='cpu')
         model = checkpoint['model'](**checkpoint['config'])
         model.load_state_dict(checkpoint['state_dict'])
         return model

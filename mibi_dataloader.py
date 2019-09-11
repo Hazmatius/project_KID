@@ -116,6 +116,11 @@ class KID_Data:
     def __init__(self, **kwargs):
         image_loader = ImageLoader()
 
+        if torch.cuda.is_available():
+            self.device = 'cuda'
+        else:
+            self.device = 'cpu'
+
         self.flag = 'normal'
         if 'flag' in kwargs:
             self.flag = kwargs['flag']
@@ -195,15 +200,15 @@ class KID_Data:
 
     def get_samples(self, sample_indices):
         samples = {
-            's_i-1': torch.zeros([len(sample_indices), self.num_channels, self.crop, self.crop], dtype=torch.float32).cuda(),
-            's_i':   torch.zeros([len(sample_indices), self.num_channels, self.crop, self.crop], dtype=torch.float32).cuda(),
-            's_i+1': torch.zeros([len(sample_indices), self.num_channels, self.crop, self.crop], dtype=torch.float32).cuda(),
-            'm_i-1': torch.zeros([len(sample_indices), 3], dtype=torch.float32).cuda(),
-            'm_i':   torch.zeros([len(sample_indices), 3], dtype=torch.float32).cuda(),
-            'm_i+1': torch.zeros([len(sample_indices), 3], dtype=torch.float32).cuda(),
-            'dt_i-1':  torch.zeros([len(sample_indices), 1], dtype=torch.float32).cuda(),
-            'dt_i':   torch.zeros([len(sample_indices), 1], dtype=torch.float32).cuda(),
-            'dt_i+1':   torch.zeros([len(sample_indices), 1], dtype=torch.float32).cuda()
+            's_i-1': torch.zeros([len(sample_indices), self.num_channels, self.crop, self.crop], dtype=torch.float32, device=self.device),
+            's_i':   torch.zeros([len(sample_indices), self.num_channels, self.crop, self.crop], dtype=torch.float32, device=self.device),
+            's_i+1': torch.zeros([len(sample_indices), self.num_channels, self.crop, self.crop], dtype=torch.float32, device=self.device),
+            'm_i-1': torch.zeros([len(sample_indices), 3], dtype=torch.float32, device=self.device),
+            'm_i':   torch.zeros([len(sample_indices), 3], dtype=torch.float32, device=self.device),
+            'm_i+1': torch.zeros([len(sample_indices), 3], dtype=torch.float32, device=self.device),
+            'dt_i-1':  torch.zeros([len(sample_indices), 1], dtype=torch.float32, device=self.device),
+            'dt_i':   torch.zeros([len(sample_indices), 1], dtype=torch.float32, device=self.device),
+            'dt_i+1':   torch.zeros([len(sample_indices), 1], dtype=torch.float32, device=self.device)
         }
 
         for i in np.arange(len(sample_indices)):
